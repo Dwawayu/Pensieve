@@ -1,0 +1,53 @@
+base_config: ./logs/exp_217/config.yaml
+
+only_evaluation: True
+models_to_load: false
+training:
+  batch_size: 1
+  num_workers: 0
+
+evaluations:
+  re10k:
+    evaluation_dataset:
+      class: datasets.re10k_evaluation_json.RE10KEvaluationJson
+      params:
+        data_path: ./data/re10k/test
+        min_video_length: 2
+        max_video_length: 2
+        max_step: 1
+        min_step: 1
+        read_camera: True
+        read_misc: True
+        data_cache: false
+        transforms:
+          resize:
+            class: datasets.transforms.Resize
+            params:
+              size:
+              - 256
+              - 455
+          center_crop:
+            class: datasets.transforms.CenterCrop
+            params:
+              size:
+              - 256
+              - 256
+    evaluation_method:
+      class: evaluations.RefineEvaluation
+      params:
+        tgt_pose: predict
+        camera_optimizer:
+          class: utils.GS_utils.CameraOptimizer
+          params:
+            n_iter: 40
+            optimizer:
+              class: torch.optim.Adam
+              params:
+                lr: 0.05
+            losses:
+              image_l2_loss:
+                class: losses.ImageL2Loss
+                weight: 1.0
+              lpips_loss:
+                class: losses.LpipsLoss
+                weight: 0.5

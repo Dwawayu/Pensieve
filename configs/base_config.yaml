@@ -1,0 +1,365 @@
+seed: 2024
+log_folder: ./logs
+exp_name: pretraining
+load_folder: ""
+load_optimizer: false
+models_to_load: false
+single_intrinsic: true
+norm_extrinsic: false
+alpha_bg: noise
+global_state:
+  dim_mode: 2d
+  sh_degree: 0
+render:
+  implementation: official
+  params:
+    packed: false
+training:
+  start_epoch: 0
+  batch_size: 2
+  num_workers: 6
+  num_epochs: 200
+  device: cuda
+  log_steps: 100
+  visualization_steps: 50
+  eval_steps: 200
+  max_grad_norm: 0.5
+  gradient_accumulation_steps: 4
+  mixed_precision: bf16
+  save_ckpt_epochs: 1
+  vis_multi_results: 1
+inference:
+  class: inferences.RefineInference
+  params:
+    camera_min: 2
+    camera_max: 7
+    gs_min: 1
+    gs_max: 6
+    random_order: true
+    lvsm_render: true
+    gs_render: false
+    lower_weight: 0.1
+dataset:
+  class: datasets.re10k_dataset.RE10KDataset
+  sampler:
+    class: datasets.samplers.DistributedSamplerSplitBeforeShuffle
+  params:
+    data_path: ./data/re10k/train
+    min_video_length: 7
+    max_video_length: 7
+    max_step: 48
+    min_step: 12
+    data_cache: true
+    step_mode: random
+    read_camera: false
+    transforms:
+      resize:
+        class: datasets.transforms.Resize
+        params:
+          size:
+          - 256
+          - 455
+      center_crop:
+        class: datasets.transforms.CenterCrop
+        params:
+          size:
+          - 256
+          - 256
+models:
+  shared_backbone:
+    class: backbones.refine_attention.RefineAttention
+    params:
+      self_transformer:
+        class: backbones.transformers.VisionTransformer
+        params:
+          in_channels: 5
+          num_layers: 12
+          dropout_p: 0.0
+          out_channels: 16
+          embed_dim: 768
+          RMSNorm: true
+          bias: false
+          hook_fusion: MLP
+          hooks:
+          - 5
+      gs_transformer:
+        class: backbones.transformers.VisionTransformer
+        params:
+          in_channels: 16
+          num_layers: 8
+          dropout_p: 0.0
+          out_channels: 16
+          embed_dim: 512
+          RMSNorm: true
+          bias: false
+          hook_fusion: MLP
+          hooks:
+          - 3
+      camera_transformer:
+        class: backbones.transformers.VisionTransformer
+        params:
+          in_channels: 16
+          num_layers: 8
+          dropout_p: 0.0
+          out_channels: 16
+          embed_dim: 512
+          RMSNorm: true
+          bias: false
+          hook_fusion: MLP
+          hooks:
+          - 3
+    optimizer:
+      class: torch.optim.AdamW
+      params:
+        lr: 0.0004
+        betas:
+        - 0.9
+        - 0.95
+    scheduler:
+      class: utils.general_utils.WarmupCosineAnnealing
+      params:
+        T_warmup: 16000
+        T_cosine: 1600000
+        eta_min: 1.0e-05
+    shared_by:
+    - camera
+    - gs
+    - lvsm
+  camera:
+    backbone:
+      class: backbones.multi_frame_resnet.MultiFrameResnet
+      params:
+        encoder:
+          class: backbones.multi_frame_resnet.MultiFrameResnetEncoder
+          params:
+            num_layers: 34
+            pretrained: true
+            num_input_images: 7
+      optimizer:
+        class: torch.optim.AdamW
+        params:
+          lr: 0.0004
+          betas:
+          - 0.9
+          - 0.95
+      scheduler:
+        class: utils.general_utils.WarmupCosineAnnealing
+        params:
+          T_warmup: 16000
+          T_cosine: 1600000
+          eta_min: 1.0e-05
+    decoder:
+      class: camera_decoders.linear_decoder.LinearDecoder
+      params:
+        mode: direct
+        num_layers: 0
+        feature_dim: 512
+        bias: false
+        convert_to_quaternion:
+          class: camera_decoders.converters.quaternion_converters.Normalization
+        convert_to_translation:
+          class: camera_decoders.converters.translation_converters.Identity
+          params:
+            scale: 1.0
+        convert_to_focal:
+          class: camera_decoders.converters.focal_converters.Sigmoid
+        convert_to_principal:
+          class: camera_decoders.converters.principal_converters.ReturnNone
+      optimizer:
+        class: torch.optim.AdamW
+        params:
+          lr: 0.0004
+          betas:
+          - 0.9
+          - 0.95
+      scheduler:
+        class: utils.general_utils.WarmupCosineAnnealing
+        params:
+          T_warmup: 16000
+          T_cosine: 1600000
+          eta_min: 1.0e-05
+  gs:
+    backbone:
+      class: backbones.transformers.AllFrameTransformer
+      params:
+        vision_transformer:
+          class: backbones.transformers.VisionTransformer
+          params:
+            in_channels: 6
+            num_layers: 24
+            dropout_p: 0.0
+            out_channels: 16
+            embed_dim: 768
+            RMSNorm: true
+            bias: false
+            hook_fusion: DPT
+            hooks:
+            - 5
+            - 11
+            - 17
+      optimizer:
+        class: torch.optim.AdamW
+        params:
+          lr: 0.0004
+          betas:
+          - 0.9
+          - 0.95
+      scheduler:
+        class: utils.general_utils.WarmupCosineAnnealing
+        params:
+          T_warmup: 16000
+          T_cosine: 1600000
+          eta_min: 1.0e-05
+    decoder:
+      # class: gs_decoders.reg_attributes.RegAttributes
+      class: gs_decoders.empty.Empty
+      params:
+        N_bins: 1
+        sh_degree: 0
+        num_layers: 3
+        downsample_2: 0
+        feature_dim: 512
+        bias: false
+        use_bilgrid: false
+        bilgrid_depth: 8
+        bilgrid_downsample_2: 5
+        cat_image: false
+        disabled_attributes:
+        - xyz_raw
+        - pixel_residual_raw
+        convert_to_scale:
+          class: gs_decoders.converters.scale_converters.ScaleAccordingDepth
+          params:
+            activation: min_sigmoid_max
+            min_scale: 0.5
+            max_scale: 15.0
+        convert_to_opacity:
+          class: gs_decoders.converters.opacity_converters.Sigmoid
+        convert_to_features:
+          class: gs_decoders.converters.feature_converters.ResidualCat
+        convert_to_xyz:
+          class: gs_decoders.converters.xyz_converters.SigmoidDepth
+          params:
+            min_depth: 1.0
+            max_depth: 100.0
+            inv: true
+        convert_to_rotation:
+          class: gs_decoders.converters.rotation_converters.Normalization
+      optimizer:
+        class: torch.optim.AdamW
+        params:
+          lr: 0.0004
+          betas:
+          - 0.9
+          - 0.95
+      scheduler:
+        class: utils.general_utils.WarmupCosineAnnealing
+        params:
+          T_warmup: 16000
+          T_cosine: 1600000
+          eta_min: 1.0e-05
+  lvsm:
+    decoder:
+      class: gs_decoders.lvsm_head.LVSMHead
+      params:
+        lvsm_transformer:
+          class: backbones.transformers.VisionTransformer
+          params:
+            in_channels: 27
+            num_layers: 8
+            dropout_p: 0.0
+            out_channels: 3
+            embed_dim: 512
+            RMSNorm: true
+            bias: false
+            hook_fusion: MLP
+            hooks:
+            - 3
+      optimizer:
+        class: torch.optim.AdamW
+        params:
+          lr: 0.0004
+          betas:
+          - 0.9
+          - 0.95
+      scheduler:
+        class: utils.general_utils.WarmupCosineAnnealing
+        params:
+          T_warmup: 16000
+          T_cosine: 1600000
+          eta_min: 1.0e-05
+losses:
+  image_l1_loss:
+    class: losses.ImageL1Loss
+    weight: 0.0
+  image_ssim_loss:
+    class: losses.ImageSSIMLoss
+    weight: 0.0
+  depth_sample_loss:
+    class: losses.DepthProjectionLoss
+    weight: 0.0
+    params:
+      max_step: 600000
+      fwd_flow_weight: 0.0
+      use_predict_depth: true
+  depth_smooth_loss:
+    class: losses.DepthSmoothLoss
+    weight: 0.0
+    params:
+      inv: true
+      normalize: true
+      gamma: 2.0
+      use_predict_depth: true
+  camera_inverse_loss:
+    class: losses.CameraInverseLoss
+    weight: 0.0
+    params:
+      q_weight: 1.0
+      t_weight: 1.0
+  push_alpha_loss:
+    class: losses.PushAlphaLogLoss
+    weight: 0.0
+  depth_distortion_loss:
+    class: losses.DepthDistortionLoss
+    weight: 0.0
+  normal_consistency_loss:
+    class: losses.NormalConsistencyLoss
+    weight: 0.0
+  depth_supervised_loss:
+    class: losses.DepthSupervisedLoss
+    weight: 0.0
+    params:
+      inv: true
+      normalize: true
+  lpips_loss:
+    class: losses.LpipsLoss
+    weight: 0.5
+  perceptual_loss:
+    class: losses.PerceptualLoss
+    weight: 0.0
+  image_l2_loss:
+    class: losses.ImageL2Loss
+    weight: 1.0
+  bilgrid_tv_loss:
+    class: losses.BilGridTVLoss
+    weight: 0.0
+  chamfer_distance_loss:
+    class: losses.ChamferDistanceLoss
+    weight: 0.0
+    params:
+      ignore_quantile: 0.9
+  camera_supervised_loss:
+    class: losses.CameraSupervisedLoss
+    weight: 0.0
+  camera_consistency_loss:
+    class: losses.CameraConsistencyLoss
+    weight: 0.0
+  pixel_align_loss:
+    class: losses.PixelDirAlignLoss
+    weight: 0.0
+  direct_loss:
+    class: losses.DirectLoss
+    weight: 0.0
+    params:
+      key_weight_dict:
+        diffusion_loss: 1.0

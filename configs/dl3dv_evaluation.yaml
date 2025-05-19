@@ -1,0 +1,48 @@
+base_config: ./logs/exp_220/config.yaml
+
+only_evaluation: True
+models_to_load: false
+training:
+  batch_size: 1
+  num_workers: 0
+
+evaluations:
+  dl3dv:
+    evaluation_dataset:
+      class: datasets.dl3dv_evaluation.DL3DVEvaluation
+      params:
+        data_path: ./data/DL3DV-Benchmark/test
+        min_video_length: 2
+        max_video_length: 2
+        max_step: 1
+        min_step: 1
+        read_camera: True
+        read_misc: True
+        data_cache: false
+        transforms:
+          resize:
+            class: datasets.transforms.Resize
+            params:
+              size:
+              - 256
+              - 448
+    evaluation_method:
+      # class: evaluations.AlignPoseEvaluation
+      class: evaluations.RefineEvaluation
+      params:
+        tgt_pose: align
+        camera_optimizer:
+          class: utils.GS_utils.CameraOptimizer
+          params:
+            n_iter: 40
+            optimizer:
+              class: torch.optim.Adam
+              params:
+                lr: 0.05
+            losses:
+              image_l2_loss:
+                class: losses.ImageL2Loss
+                weight: 1.0
+              lpips_loss:
+                class: losses.LpipsLoss
+                weight: 0.5

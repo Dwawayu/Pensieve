@@ -1,0 +1,32 @@
+base_config: ./configs/base_config.yaml
+
+exp_name: alignment
+load_folder: ./logs/pretraining/ckpts
+models_to_load:
+- camera_decoder
+- lvsm_decoder
+- shared_backbone
+
+training:
+  vis_multi_results: 2
+
+inference:
+  params:
+    gs_render: true
+
+dataset:
+  params:
+    init_max_step: 4
+    warmup_steps: 20000
+
+models:
+  gs:
+    decoder:
+      class: gs_decoders.reg_attributes.RegAttributes
+
+losses:
+  depth_sample_loss:
+    weight: 1.0
+
+  depth_smooth_loss:
+    weight: 0.001
