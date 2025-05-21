@@ -7,7 +7,7 @@ The official PyTorch implementation for the paper
 >\
 >Ruoyu Wang, Yi Ma, Shenghua Gao
 > \
-> [Arxiv]()
+> [Arxiv](https://arxiv.org/abs/2505.13440)
 
 <p align="center">
   <img src="assets/pipeline.png" alt="pipeline of our method" width="1000" />
