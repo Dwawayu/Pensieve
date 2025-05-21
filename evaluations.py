@@ -255,10 +255,10 @@ class RefineEvaluation(AlignPoseEvaluation):
             predict_cameras_dict = camera_list_to_dict(inputs["cameras_list"])
             g2p_q, g2p_scale, g2p_t = align_camera_dict(inputs["camera_dict"], predict_cameras_dict, "all")
             gt_cameras_list = camera_dict_to_list(inputs["target_cameras"])
+            gs_to_render = gs_cat(inputs["gs_list"])
         elif self.tgt_pose == "predict":
             gt_cameras_list = inputs["gt_cameras_list"]
             
-        gs_to_render = gs_cat(inputs["gs_list"])
         for i, camera in enumerate(gt_cameras_list):
             
             if self.tgt_pose == "align":
@@ -266,8 +266,8 @@ class RefineEvaluation(AlignPoseEvaluation):
                 camera.quaternion = quaternion_multiply(g2p_q, camera.quaternion)
                 camera.fx = inputs["cameras_list"][0].fx
                 camera.fy = inputs["cameras_list"][0].fy
-            if self.camera_optimizer is not None:
-                camera = self.camera_optimizer(inputs["target_images"][:, i], camera, gs_to_render)
+                if self.camera_optimizer is not None:
+                    camera = self.camera_optimizer(inputs["target_images"][:, i], camera, gs_to_render)
         
 
             plucker_embedding = camera.plucker_ray

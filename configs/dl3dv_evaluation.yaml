@@ -1,4 +1,4 @@
-base_config: ./logs/exp_220/config.yaml
+base_config: ./logs/dl3dv/config.yaml
 
 only_evaluation: True
 models_to_load: false

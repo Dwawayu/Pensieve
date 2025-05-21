@@ -1,7 +1,7 @@
 base_config: ./configs/base_config.yaml
 
-exp_name: alignment
-load_folder: ./logs/pretraining/ckpts
+exp_name: re10k_align
+load_folder: ./logs/re10k_pretrain/ckpts
 models_to_load:
 - camera_decoder
 - lvsm_decoder

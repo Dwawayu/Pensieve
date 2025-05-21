@@ -45,3 +45,25 @@ To perform alignment, you can use the following command:
 ```shell
 accelerate launch --num_processes 8 --num_machines 1 --machine_rank 0 train.py -c ./configs/align_config.yaml
 ```
+
+To reload the weights and train on the DL3DV-10K dataset, you can use the following command:
+```shell
+accelerate launch --num_processes 8 --num_machines 1 --machine_rank 0 train.py -c ./configs/dl3dv_config.yaml
+```
+
+You can freely set `num_processes` and `num_machines`, but please carefully adjust the iteration-related settings in the config. For example, `dataset.params.warmup_steps` and `losses.depth_sample_loss.params.max_step`.
+
+## 🐇 Evaluation
+During evaluation, you only need to set the `base_config` in the evaluation config file to point to the config saved in the experiment folder. It will then configure the network accordingly and load the weights from that folder.
+
+We have provided example config files. You can evaluate the model by running:
+
+```shell
+accelerate launch --num_processes 8 --num_machines 1 --machine_rank 0 train.py -c ./configs/re10k_evaluation.yaml
+```
+The `tgt_pose=[predict|align]` parameter in the `evaluations.RefineEvaluation` class corresponds to **Target-aware Evaluation** and **Target-aligned Evaluation**, as described in the paper.
+
+
+## 🐉 Pretrained model
+We have provided the pretrained model for RealEstate10K and DL3DV-10K. You can download them from [huggingface](https://huggingface.co/dwawayu/pensieve/tree/main).
+

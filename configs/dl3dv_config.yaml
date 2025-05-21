@@ -1,7 +1,7 @@
 seed: 2024
 log_folder: ./logs
-exp_name: re10k_pretrain
-load_folder: ""
+exp_name: dl3dv
+load_folder: ./logs/re10k_align/ckpts
 load_optimizer: false
 models_to_load: false
 single_intrinsic: true
@@ -18,7 +18,7 @@ training:
   start_epoch: 0
   batch_size: 2
   num_workers: 6
-  num_epochs: 200
+  num_epochs: 400
   device: cuda
   log_steps: 100
   visualization_steps: 50
@@ -27,44 +27,37 @@ training:
   gradient_accumulation_steps: 4
   mixed_precision: bf16
   save_ckpt_epochs: 1
-  vis_multi_results: 1
+  vis_multi_results: 2
 inference:
   class: inferences.RefineInference
   params:
     camera_min: 2
-    camera_max: 7
+    camera_max: 5
     gs_min: 1
-    gs_max: 6
+    gs_max: 4
     random_order: true
-    lvsm_render: true
-    gs_render: false
+    gs_render: true
     lower_weight: 0.1
 dataset:
-  class: datasets.re10k_dataset.RE10KDataset
+  class: datasets.dl3dv_dataset.DL3DV10KDataset
   sampler:
     class: datasets.samplers.DistributedSamplerSplitBeforeShuffle
   params:
-    data_path: ./data/re10k/train
-    min_video_length: 7
-    max_video_length: 7
-    max_step: 48
-    min_step: 12
-    data_cache: true
+    data_path: ../../datasets/DL3DV-10K_960
+    min_video_length: 5
+    max_video_length: 5
+    max_step: 4
+    min_step: 1
     step_mode: random
     read_camera: false
+    data_cache: false
     transforms:
       resize:
         class: datasets.transforms.Resize
         params:
           size:
           - 256
-          - 455
-      center_crop:
-        class: datasets.transforms.CenterCrop
-        params:
-          size:
-          - 256
-          - 256
+          - 448
 models:
   shared_backbone:
     class: backbones.refine_attention.RefineAttention
@@ -118,8 +111,8 @@ models:
     scheduler:
       class: utils.general_utils.WarmupCosineAnnealing
       params:
-        T_warmup: 16000
-        T_cosine: 1600000
+        T_warmup: 0
+        T_cosine: 512000
         eta_min: 1.0e-05
     shared_by:
     - camera
@@ -145,8 +138,8 @@ models:
       scheduler:
         class: utils.general_utils.WarmupCosineAnnealing
         params:
-          T_warmup: 16000
-          T_cosine: 1600000
+          T_warmup: 0
+          T_cosine: 512000
           eta_min: 1.0e-05
     decoder:
       class: camera_decoders.linear_decoder.LinearDecoder
@@ -175,8 +168,8 @@ models:
       scheduler:
         class: utils.general_utils.WarmupCosineAnnealing
         params:
-          T_warmup: 16000
-          T_cosine: 1600000
+          T_warmup: 0
+          T_cosine: 512000
           eta_min: 1.0e-05
   gs:
     backbone:
@@ -207,12 +200,11 @@ models:
       scheduler:
         class: utils.general_utils.WarmupCosineAnnealing
         params:
-          T_warmup: 16000
-          T_cosine: 1600000
+          T_warmup: 0
+          T_cosine: 512000
           eta_min: 1.0e-05
     decoder:
-      # class: gs_decoders.reg_attributes.RegAttributes
-      class: gs_decoders.empty.Empty
+      class: gs_decoders.reg_attributes.RegAttributes
       params:
         N_bins: 1
         sh_degree: 0
@@ -255,8 +247,8 @@ models:
       scheduler:
         class: utils.general_utils.WarmupCosineAnnealing
         params:
-          T_warmup: 16000
-          T_cosine: 1600000
+          T_warmup: 0
+          T_cosine: 512000
           eta_min: 1.0e-05
   lvsm:
     decoder:
@@ -285,8 +277,8 @@ models:
       scheduler:
         class: utils.general_utils.WarmupCosineAnnealing
         params:
-          T_warmup: 16000
-          T_cosine: 1600000
+          T_warmup: 0
+          T_cosine: 512000
           eta_min: 1.0e-05
 losses:
   image_l1_loss:
@@ -297,14 +289,14 @@ losses:
     weight: 0.0
   depth_sample_loss:
     class: losses.DepthProjectionLoss
-    weight: 0.0
+    weight: 1.0
     params:
-      max_step: 600000
+      max_step: 48000
       fwd_flow_weight: 0.0
       use_predict_depth: true
   depth_smooth_loss:
     class: losses.DepthSmoothLoss
-    weight: 0.0
+    weight: 0.0002
     params:
       inv: true
       normalize: true
