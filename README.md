@@ -67,3 +67,5 @@ The `tgt_pose=[predict|align]` parameter in the `evaluations.RefineEvaluation` c
 ## 🐉 Pretrained model
 We have provided the pretrained model for RealEstate10K and DL3DV-10K. You can download them from [huggingface](https://huggingface.co/dwawayu/pensieve/tree/main).
 
+## 🐍 Acknowledgements
+Please also note a highly relevant work, [RayZer](https://hwjiang1510.github.io/RayZer/), which provides an in-depth discussion on the advantages of 3D self-supervised pretraining.

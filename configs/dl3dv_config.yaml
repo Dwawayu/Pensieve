@@ -43,7 +43,7 @@ dataset:
   sampler:
     class: datasets.samplers.DistributedSamplerSplitBeforeShuffle
   params:
-    data_path: ../../datasets/DL3DV-10K_960
+    data_path: ./data/DL3DV-10K_960
     min_video_length: 5
     max_video_length: 5
     max_step: 4

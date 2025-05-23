@@ -97,7 +97,7 @@ class ScaleAccordingDepth:
         return map_to_GS(self.activation(outputs["scale_raw"])) * init_scale
     
 
-class ScaleAccordingDistance(ScaleAccordingDepth):   
+class ScaleAccordingDistance(ScaleAccordingDepth):
     def get_reference(self, outputs):
         xyz = outputs["gs_list"][-1]["xyz"] # B, N, 3
         norm = xyz.norm(dim=-1, keepdim=True) # B, N, 1
